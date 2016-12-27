@@ -1,0 +1,4 @@
+#ifndef INTERFACE_MACHINE_HPP
+#define INTERFACE_MACHINE_HPP
+#include"ATMMsg.hpp"
+#endif // INTERFACE_MACHINE_HPP
