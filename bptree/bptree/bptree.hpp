@@ -53,12 +53,12 @@ private:
 	size_t order;//the order of the bplustree
 	std::shared_ptr<rootnode<Key>>root;
 	std::shared_ptr<node> search_node(std::shared_ptr<node> const& p, Key const& key, bool remove_or_insert);
-	void insert_in_parent(std::shared_ptr<node>& p, Key const& key, std::shared_ptr<node>& child_node);
+	void insert_in_parent(std::shared_ptr<node>& p, Key const& key,std::shared_ptr<node>& child_node);
 	void splite_node(std::shared_ptr<node> &p);
 public:
 	bplus_tree(size_t const _order):order(_order), root(nullptr) {}
 	bool insert(const Key& key, const Value& value);
-	//void visit(std::shared_ptr<node>const &_node);
-	//void print() { visit(root); }
+	void visit(std::shared_ptr<node>const &_node);
+	void print() { visit(root); }
 };
 #endif  
