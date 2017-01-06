@@ -55,9 +55,9 @@ private:
 	std::shared_ptr<node> search_node(std::shared_ptr<node> const& p, Key const& key, bool remove_or_insert);
 	void insert_in_parent(std::shared_ptr<node>& p, Key const& key,std::shared_ptr<node>& child_node);
 	void splite_node(std::shared_ptr<node> &p);
-	void solveunderflow(std::shared_ptr<node>& p);
-	void borrow_node(std::shared_ptr<node>& p);
-	void combine_node(std::shared_ptr<node>& p);
+	void solveunderflow(std::shared_ptr<node> p);
+	void borrow_node(std::shared_ptr<node> p);
+	void combine_node(std::shared_ptr<node> p);
 public:
 	bplus_tree(size_t const _order):order(_order), root(nullptr) {}
 	bool insert(const Key& key, const Value& value);

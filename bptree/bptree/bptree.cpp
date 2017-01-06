@@ -16,7 +16,7 @@ std::shared_ptr<node> bplus_tree<Key, Value>::search_node(std::shared_ptr<node> 
 			auto it = std::find(leaf_node->keyItem.begin(), leaf_node->keyItem.end(), key);
 			if (it != leaf_node->keyItem.end())
 			{
-				std::shared_ptr<node>res(leaf_node);
+				std::shared_ptr<node>res=p;
 				return res;
 			}
 			else
@@ -426,12 +426,12 @@ void bplus_tree<Key, Value>::splite_node(std::shared_ptr<node>& p)
 }
 /*solve the numbers of keys less then order/2*/
 template<typename Key,typename Value>
-void bplus_tree<Key, Value>::solveunderflow(std::shared_ptr<node>& p)
+void bplus_tree<Key, Value>::solveunderflow(std::shared_ptr<node> p)
 {
 	if (dynamic_cast<leafnode<Key>*>(p.get()))
 	{
-		leafnode<Key*>_node = dynamic_cast<leafnode<Key>*>(p.get());
-		if ((nullptr == _node->prev || dynamic_cast<leafnode<Key>*>(_node->prev.get())!=_node->parent||dynamic_cast<leafnode<Key>*>(_node->prev.get())->keyItem.size() == order / 2) && (nullptr == _node->next || dynamic_cast<leafnode<Key>*>(_node->next.get()) != _node->parent || dynamic_cast<leafnode<Key>*>(_node->next.get())->keyItem.size() == order / 2))
+		leafnode<Key>* _node = dynamic_cast<leafnode<Key>*>(p.get());
+		if ((nullptr == _node->prev || dynamic_cast<leafnode<Key>*>(_node->prev.get())->parent!=_node->parent||dynamic_cast<leafnode<Key>*>(_node->prev.get())->keyItem.size() == order / 2) && (nullptr == _node->next || dynamic_cast<leafnode<Key>*>(_node->next.get())->parent != _node->parent || dynamic_cast<leafnode<Key>*>(_node->next.get())->keyItem.size() == order / 2))
 		{
 			combine_node(p);
 			return;
@@ -442,7 +442,7 @@ void bplus_tree<Key, Value>::solveunderflow(std::shared_ptr<node>& p)
 	if (dynamic_cast<internalnode<Key>*>(p.get()))
 	{
 		internalnode<Key>* _node = dynamic_cast<internalnode<Key>*>(p.get());
-		if ((nullptr == _node->prev || dynamic_cast<internalnode<Key>*>(_node->prev.get()) != _node->parent || dynamic_cast<internalnode<Key>*>(_node->prev.get())->keyItem.size() == order / 2) && (nullptr == _node->next || dynamic_cast<internalnode<Key>*>(_node->next.get()) != _node->parent || dynamic_cast<internalnode<Key>*>(_node->next.get())->keyItem.size() == order / 2))
+		if ((nullptr == _node->prev || dynamic_cast<internalnode<Key>*>(_node->prev.get())->parent != _node->parent || dynamic_cast<internalnode<Key>*>(_node->prev.get())->keyItem.size() == order / 2) && (nullptr == _node->next || dynamic_cast<internalnode<Key>*>(_node->next.get())->parent != _node->parent || dynamic_cast<internalnode<Key>*>(_node->next.get())->keyItem.size() == order / 2))
 		{
 			combine_node(p);
 			return;
@@ -453,7 +453,7 @@ void bplus_tree<Key, Value>::solveunderflow(std::shared_ptr<node>& p)
 }
 /* borrow the key from brother node or father node*/
 template<typename Key,typename Value>
-void bplus_tree<Key, Value>::borrow_node(std::shared_ptr<node>& p)
+void bplus_tree<Key, Value>::borrow_node(std::shared_ptr<node> p)
 {
 	if (dynamic_cast<leafnode<Key>*>(p.get()))
 	{
@@ -463,7 +463,7 @@ void bplus_tree<Key, Value>::borrow_node(std::shared_ptr<node>& p)
 			leafnode<Key>* prev_node = dynamic_cast<leafnode<Key>*>(_node->prev.get());
 			_node->keyItem.insert(_node->keyItem.begin(), prev_node->keyItem.at(prev_node->keyItem.size() - 1));
 			_node->childptr.insert(_node->childptr.begin(), prev_node->childptr.at(prev_node->childptr.size() - 1));
-			prev_node->keyItem.pop_back();
+	        prev_node->keyItem.pop_back();
 			prev_node->childptr.pop_back();
 			if (dynamic_cast<internalnode<Key>*>(_node->parent.get()))
 			{
@@ -577,15 +577,278 @@ void bplus_tree<Key, Value>::borrow_node(std::shared_ptr<node>& p)
 }
 /*combine the node with brother node*/
 template<typename Key,typename Value>
-void bplus_tree<Key, Value>::combine_node(std::shared_ptr<node>& p)
+void bplus_tree<Key, Value>::combine_node(std::shared_ptr<node> p)
 {
-
+	if (dynamic_cast<leafnode<Key>*>(p.get()))
+	{
+		leafnode<Key>* _node = dynamic_cast<leafnode<Key>*>(p.get());
+		if (_node->prev&&dynamic_cast<leafnode<Key>*>(_node->prev.get())->parent == _node->parent)
+		{
+			leafnode<Key>* prev_node = dynamic_cast<leafnode<Key>*>(_node->prev.get());
+			prev_node->keyItem.insert(prev_node->keyItem.end(), _node->keyItem.begin(), _node->keyItem.end());
+			prev_node->childptr.insert(prev_node->childptr.end(), _node->childptr.begin(), _node->childptr.end());
+			if (_node->next)
+			{
+				dynamic_cast<leafnode<Key>*>(_node->next.get())->prev = _node->prev;
+				prev_node->next = _node->next;
+			}
+			else
+			{
+				prev_node->next = nullptr;
+			}
+			if (dynamic_cast<rootnode<Key>*>(_node->parent.get()))
+			{
+				rootnode<Key>* parent_node = dynamic_cast<rootnode<Key>*>(_node->parent.get());
+				auto it = std::find(parent_node->childptr.begin(), parent_node->childptr.end(), _node->prev);
+				size_t index = std::distance(parent_node->childptr.begin(), it);
+				parent_node->keyItem.erase(parent_node->keyItem.begin() + index);
+				parent_node->childptr.erase(parent_node->childptr.begin() + index + 1);
+				if (parent_node->keyItem.size() == 0)
+				{
+					rootnode<Key>* _root = new rootnode<Key>;
+					for (size_t i = 0; i < prev_node->keyItem.size(); ++i)
+					{
+						_root->keyItem.push_back(prev_node->keyItem.at(i));
+						_root->childptr.push_back(prev_node->childptr.at(i));
+					}
+					root.reset(_root);	
+				}
+				return;
+			}
+			if (dynamic_cast<internalnode<Key>*>(_node->parent.get()))
+			{
+				internalnode<Key>* parent_node = dynamic_cast<internalnode<Key>*>(_node->parent.get());
+				auto it = std::find(parent_node->childptr.begin(), parent_node->childptr.end(), _node->prev);
+				size_t index = std::distance(parent_node->childptr.begin(), it);
+				parent_node->keyItem.erase(parent_node->keyItem.begin() + index);
+				parent_node->childptr.erase(parent_node->childptr.begin() + index + 1);
+				if (parent_node->keyItem.size() < order / 2)
+				{
+					solveunderflow(_node->parent);
+				}
+			}
+			return;
+		}
+		if (_node->next&&dynamic_cast<leafnode<Key>*>(_node->next.get())->parent == _node->parent)
+		{
+			leafnode<Key>* next_node = dynamic_cast<leafnode<Key>*>(_node->next.get());
+			_node->keyItem.insert(_node->keyItem.end(), next_node->keyItem.begin(), next_node->keyItem.end());
+			_node->childptr.insert(_node->childptr.end(), next_node->childptr.begin(), next_node->childptr.end());
+			if (next_node->next)
+			{
+				dynamic_cast<leafnode<Key>*>(next_node->next.get())->prev = p;
+				_node->next = next_node->next;
+			}
+			else
+			{
+				_node->next = nullptr;
+			}
+			if (dynamic_cast<rootnode<Key>*>(_node->parent.get()))
+			{
+				rootnode<Key>* parent_node = dynamic_cast<rootnode<Key>*>(_node->parent.get());
+				auto it = std::find(parent_node->childptr.begin(), parent_node->childptr.end(), p);
+				size_t index = std::distance(parent_node->childptr.begin(), it);
+				parent_node->keyItem.erase(parent_node->keyItem.begin() + index);
+				parent_node->childptr.erase(parent_node->childptr.begin() + index + 1);
+				if (parent_node->keyItem.size() == 0)
+				{
+					rootnode<Key>* _root = new rootnode<Key>;
+					for (size_t i = 0; i < _node->keyItem.size(); ++i)
+					{
+						_root->keyItem.push_back(_node->keyItem.at(i));
+						_root->childptr.push_back(_node->childptr.at(i));
+					}
+					root.reset(_root);
+				}
+				return;
+			}
+			if (dynamic_cast<internalnode<Key>*>(_node->parent.get()))
+			{
+				internalnode<Key>* parent_node = dynamic_cast<internalnode<Key>*>(_node->parent.get());
+				auto it = std::find(parent_node->childptr.begin(), parent_node->childptr.end(), p);
+				size_t index = std::distance(parent_node->childptr.begin(), it);
+				parent_node->keyItem.erase(parent_node->keyItem.begin() + index);
+				parent_node->childptr.erase(parent_node->childptr.begin() + index + 1);
+				if (parent_node->keyItem.size() < order / 2)
+				{
+					solveunderflow(_node->parent);
+				}
+			}
+			return;
+		}
+	}
+	if (dynamic_cast<internalnode<Key>*>(p.get()))
+	{
+		internalnode<Key>* _node = dynamic_cast<internalnode<Key>*>(p.get());
+		if (_node->prev&&dynamic_cast<internalnode<Key>*>(_node->prev.get())->parent == _node->parent)
+		{
+			internalnode<Key>* prev_node = dynamic_cast<internalnode<Key>*>(_node->prev.get());
+			for (size_t i = 0; i < _node->childptr.size(); ++i)
+			{
+				prev_node->childptr.push_back(_node->childptr.at(i));
+				if (dynamic_cast<leafnode<Key>*>(_node->childptr.at(i).get()))
+				{
+					dynamic_cast<leafnode<Key>*>(_node->childptr.at(i).get())->parent = _node->prev;
+				}
+				if (dynamic_cast<internalnode<Key>*>(_node->childptr.at(i).get()))
+				{
+					dynamic_cast<internalnode<Key>*>(_node->childptr.at(i).get())->parent = _node->prev;
+				}
+			}
+			if (_node->next)
+			{
+				dynamic_cast<internalnode<Key>*>(_node->next.get())->prev = _node->prev;
+				prev_node->next = _node->next;
+			}
+			else
+			{
+				prev_node->next = nullptr;
+			}
+			if (dynamic_cast<rootnode<Key>*>(_node->parent.get()))
+			{
+				rootnode<Key>* parent_node = dynamic_cast<rootnode<Key>*>(_node->parent.get());
+				auto it = std::find(parent_node->childptr.begin(), parent_node->childptr.end(), _node->prev);
+				size_t index = std::distance(parent_node->childptr.begin(), it);
+				prev_node->keyItem.push_back(parent_node->keyItem.at(index));
+				for (size_t i = 0; i < _node->keyItem.size(); ++i)
+				{
+					prev_node->keyItem.push_back(_node->keyItem.at(i));
+				}
+				parent_node->keyItem.erase(parent_node->keyItem.begin() + index);
+				parent_node->childptr.erase(parent_node->childptr.begin() + index + 1);
+				if (parent_node->keyItem.size() == 0)
+				{
+					rootnode<Key>* _root = new rootnode<Key>;
+					for (size_t i = 0; i < prev_node->keyItem.size(); ++i)
+					{
+						_root->keyItem.push_back(prev_node->keyItem.at(i));
+					}
+					for (size_t i = 0; i < prev_node->childptr.size(); ++i)
+					{
+						_root->childptr.push_back(prev_node->childptr.at(i));
+					}
+					root.reset(_root);
+					for (size_t i = 0; i < _root->childptr.size(); ++i)
+					{
+						if (dynamic_cast<leafnode<Key>*>(_root->childptr.at(i).get()))
+						{
+							dynamic_cast<leafnode<Key>*>(_root->childptr.at(i).get())->parent = root;
+						}
+						if (dynamic_cast<internalnode<Key>*>(_root->childptr.at(i).get()))
+						{
+							dynamic_cast<internalnode<Key>*>(_root->childptr.at(i).get())->parent = root;
+						}
+					}
+				}
+				return;
+			}
+			if (dynamic_cast<internalnode<Key>*>(_node->parent.get()))
+			{
+				internalnode<Key>* parent_node = dynamic_cast<internalnode<Key>*>(_node->parent.get());
+				auto it = std::find(parent_node->childptr.begin(), parent_node->childptr.end(), _node->prev);
+				size_t index = std::distance(parent_node->childptr.begin(), it);
+				prev_node->keyItem.push_back(parent_node->keyItem.at(index));
+				for (size_t i = 0; i < _node->keyItem.size(); ++i)
+				{
+					prev_node->keyItem.push_back(_node->keyItem.at(i));
+				}
+				parent_node->keyItem.erase(parent_node->keyItem.begin() + index);
+				parent_node->childptr.erase(parent_node->childptr.begin() + index + 1);
+				if (parent_node->keyItem.size() < order / 2)
+				{
+					solveunderflow(_node->parent);
+				}
+			}
+			return;
+		}
+		if (_node->next&&dynamic_cast<internalnode<Key>*>(_node->next.get())->parent == _node->parent)
+		{
+			internalnode<Key>* next_node = dynamic_cast<internalnode<Key>*>(_node->next.get());
+			for (size_t i = 0; i < next_node->childptr.size(); ++i)
+			{
+				_node->childptr.push_back(next_node->childptr.at(i));
+				if (dynamic_cast<leafnode<Key>*>(next_node->childptr.at(i).get()))
+				{
+					dynamic_cast<leafnode<Key>*>(next_node->childptr.at(i).get())->parent = _node->next;
+				}
+				if (dynamic_cast<internalnode<Key>*>(next_node->childptr.at(i).get()))
+				{
+					dynamic_cast<internalnode<Key>*>(next_node->childptr.at(i).get())->parent = _node->next;
+				}
+			}
+			if (next_node->next)
+			{
+				dynamic_cast<internalnode<Key>*>(next_node->next.get())->prev = p;
+				_node->next = next_node->next;
+			}
+			else
+			{
+				_node->next = nullptr;
+			}
+			if (dynamic_cast<rootnode<Key>*>(_node->parent.get()))
+			{
+				rootnode<Key>* parent_node = dynamic_cast<rootnode<Key>*>(_node->parent.get());
+				auto it = std::find(parent_node->childptr.begin(), parent_node->childptr.end(), p);
+				size_t index = std::distance(parent_node->childptr.begin(), it);
+				_node->keyItem.push_back(parent_node->keyItem.at(index));
+				parent_node->keyItem.erase(parent_node->keyItem.begin() + index);
+				parent_node->childptr.erase(parent_node->childptr.begin() + index + 1);
+				for (size_t i = 0; i < next_node->keyItem.size(); ++i)
+				{
+					_node->keyItem.push_back(next_node->keyItem.at(i));
+				}
+				if (parent_node->keyItem.size() == 0)
+				{
+					rootnode<Key>* _root = new rootnode<Key>;
+					for (size_t i = 0; i < _node->keyItem.size(); ++i)
+					{
+						_root->keyItem.push_back(_node->keyItem.at(i));
+					}
+					for (size_t i = 0; i < _node->childptr.size(); ++i)
+					{
+						_root->childptr.push_back(_node->childptr.at(i));
+					}
+					root.reset(_root);
+					for (size_t i = 0; i < _root->childptr.size(); ++i)
+					{
+						if (dynamic_cast<leafnode<Key>*>(_root->childptr.at(i).get()))
+						{
+							dynamic_cast<leafnode<Key>*>(_root->childptr.at(i).get())->parent = root;
+						}
+						if (dynamic_cast<internalnode<Key>*>(_root->childptr.at(i).get()))
+						{
+							dynamic_cast<internalnode<Key>*>(_root->childptr.at(i).get())->parent = root;
+						}
+					}
+				}
+				return;
+			}
+			if (dynamic_cast<internalnode<Key>*>(_node->parent.get()))
+			{
+				internalnode<Key>* parent_node = dynamic_cast<internalnode<Key>*>(_node->parent.get());
+				auto it = std::find(parent_node->childptr.begin(), parent_node->childptr.end(), p);
+				size_t index = std::distance(parent_node->childptr.begin(), it);
+				_node->keyItem.push_back(parent_node->keyItem.at(index));
+				parent_node->keyItem.erase(parent_node->keyItem.begin() + index);
+				parent_node->childptr.erase(parent_node->childptr.begin() + index + 1);
+				for (size_t i = 0; i < next_node->keyItem.size(); ++i)
+				{
+					_node->keyItem.push_back(next_node->keyItem.at(i));
+				}
+				if (parent_node->keyItem.size() < order / 2)
+				{
+					solveunderflow(_node->parent);
+				}
+			}
+			return;
+		}
+	}
 }
 /*remove one key and record*/
 template<typename Key,typename Value>
 bool bplus_tree<Key, Value>::remove(Key const& key)
 {
-	std::shared_ptr<node>remove_node = search_node(root, key, true);
+	std::shared_ptr<node>remove_node = std::move(search_node(root, key, true));
 	if (nullptr == remove_node) return false;
 	if (dynamic_cast<rootnode<Key>*>(remove_node.get()))
 	{
